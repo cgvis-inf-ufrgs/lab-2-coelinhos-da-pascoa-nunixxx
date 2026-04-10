@@ -150,6 +150,9 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
+// Função que renderiza o "carrossel" de coelhos e as esferas orbitando os coelhos.
+void renderBunnySet(int num_bunnies);
+
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
 struct SceneObject
@@ -244,7 +247,7 @@ int main(int argc, char* argv[])
     // Criamos uma janela do sistema operacional, com 800 colunas e 600 linhas
     // de pixels, e com título "INF01047 ...".
     GLFWwindow* window;
-    window = glfwCreateWindow(800, 600, "INF01047 - Seu Cartao - Seu Nome", NULL, NULL);
+    window = glfwCreateWindow(800, 600, "INF01047 - 00588024 - Caio Felipe Ferreira Nunes", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -342,7 +345,7 @@ int main(int argc, char* argv[])
         // Computamos a posição da câmera utilizando coordenadas esféricas.  As
         // variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
         // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
-        // e ScrollCallback().
+        // e ScrollCallback().  
         float r = g_CameraDistance;
         float y = r*sin(g_CameraPhi);
         float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
@@ -400,20 +403,12 @@ int main(int argc, char* argv[])
         #define BUNNY  1
         #define PLANE  2
 
-        // Desenhamos o modelo da esfera
-        model = Matrix_Translate(-1.0f,0.0f,0.0f);
-        glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(g_object_id_uniform, SPHERE);
-        DrawVirtualObject("the_sphere");
-
-        // Desenhamos o modelo do coelho
-        model = Matrix_Translate(1.0f,0.0f,0.0f);
-        glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(g_object_id_uniform, BUNNY);
-        DrawVirtualObject("the_bunny");
+        #define BUNNY_NUMBER 16
+        //Desenhamos os coelhos e as esferas orbitando os coelhos.
+        renderBunnySet(BUNNY_NUMBER);
 
         // Desenhamos o plano do chão
-        model = Matrix_Translate(0.0f,-1.0f,0.0f) * Matrix_Scale(4.0f,1.0f,4.0f);
+        model = Matrix_Translate(0.0f, -1.0f, 0.0f) * Matrix_Scale(4.0f ,1.0f ,4.0f );
         glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(g_object_id_uniform, PLANE);
         DrawVirtualObject("the_plane");
@@ -429,12 +424,8 @@ int main(int argc, char* argv[])
         // por segundo (frames per second).
         TextRendering_ShowFramesPerSecond(window);
 
-        // O framebuffer onde OpenGL executa as operações de renderização não
-        // é o mesmo que está sendo mostrado para o usuário, caso contrário
-        // seria possível ver artefatos conhecidos como "screen tearing". A
-        // chamada abaixo faz a troca dos buffers, mostrando para o usuário
-        // tudo que foi renderizado pelas funções acima.
-        // Veja o link: https://en.wikipedia.org/w/index.php?title=Multiple_buffering&oldid=793452829#Double_buffering_in_computer_graphics
+        // A chamada abaixo faz a troca dos buffers, mostrando para 
+        // o usuário tudo que foi renderizado pelas funções acima.
         glfwSwapBuffers(window);
 
         // Verificamos com o sistema operacional se houve alguma interação do
@@ -451,6 +442,56 @@ int main(int argc, char* argv[])
     return 0;
 }
 
+void renderBunnySet(int num_bunnies)
+{
+    #define M_PI 3.1415926535897
+
+    float t = (float)glfwGetTime();
+    float raio_mundo = 2.0f;                        // Distancia do Centro
+    float bunny_space = 2.0f * M_PI / num_bunnies; // Espaçamento angular entre coelhos
+
+    for (int i = 0; i < num_bunnies; i++)
+    {
+        float wave = (i % 4) * (M_PI / 2.0f); // 0, 90, 180, 270 graus em radianos
+        float orbit_offset = i * bunny_space; // Distancia angular do coelho i em relação ao coelho 0
+
+        // TRANSFORMAÇÃO BASE 
+        // Tanto os coelhos quanto as esferas usam esta base
+        glm::mat4 base_model = Matrix_Rotate_Y(t * 0.5f + orbit_offset) // Gira o grupo em torno do centro do mundo
+                             * Matrix_Translate(raio_mundo, 0.0f, 0.0f) // Poe o grupo no circulo de raio raio_mundo
+                             * Matrix_Translate(0.0f, sin(t * 2.0f + wave) * 0.5f - 0.15f, 0.0f); // Faz o grupo "pular"
+
+        // COELHOS
+        glm::mat4 model_bunny = base_model * Matrix_Rotate_Y(-M_PI/2.0f); // Rota o coelho para ficar de frente para a direção do movimento
+        
+        // Um a cada 4 coelhos, rotacionam em torno de Z(Mortal)
+        if (i % 4 == 0) {
+            model_bunny = model_bunny * Matrix_Rotate_Z(t * 2.0f);
+        }
+        
+        model_bunny = model_bunny * Matrix_Scale(0.30f, 0.30f, 0.30f);
+
+        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model_bunny));
+        glUniform1i(g_object_id_uniform, BUNNY);
+        DrawVirtualObject("the_bunny");
+
+        // OVOS
+        for (int j = 0; j < 2; j++)
+        {
+            float extra_phase = (j == 1) ? M_PI : 0.0f; // Diferença de 180 graus entre ovos
+
+            glm::mat4 model_sphere = base_model                                 // Aplica tranformacoes em relacao a matriz base
+                                   * Matrix_Rotate_Z(t * 2.0f + extra_phase)    // Gira ao redor do coelho
+                                   * Matrix_Translate(0.0f, 0.5f, 0.0f)         // Afasta do centro do coelho
+                                   * Matrix_Rotate_Z(-(t * 2.0f + extra_phase)) // Contra-rotação (Billboarding)
+                                   * Matrix_Scale(0.1f, 0.16f, 0.1f);
+
+            glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model_sphere));
+            glUniform1i(g_object_id_uniform, SPHERE);
+            DrawVirtualObject("the_sphere");
+        }
+    }
+}
 // Função que desenha um objeto armazenado em g_VirtualScene. Veja definição
 // dos objetos na função BuildTrianglesAndAddToVirtualScene().
 void DrawVirtualObject(const char* object_name)
