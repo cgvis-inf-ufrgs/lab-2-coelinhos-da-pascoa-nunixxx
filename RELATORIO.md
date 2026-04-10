@@ -33,7 +33,8 @@
 - **Leia e compreenda como funciona o código**
 - **No main.cpp, altere o título da janela para 'INF01047 - 00588024 - Caio Felipe Ferreira Nunes'**
 - **Crie uma funcao para a renderização dos coelhos e ovos:**
-> [!RenderBunnySet(int numBunnies)]
+> [!IMPORTANT]
+> - **RenderBunniesSet(int numBunnies):**
 > - Ela irá receber o número de coelhos a serem renderizados;
 > - Obtenha o tempo com glfwGetTime(), defina o raio do circulo em relacao ao centro (2.0f) e o espacamento angular entre os coelhos e uma variavel M_PI com o valor aproximado de PI;
 > - inicie um laco for para cada coelho;
